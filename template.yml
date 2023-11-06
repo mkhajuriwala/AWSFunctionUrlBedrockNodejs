@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+  GenerativeAIFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: index.handler
+      Runtime: nodejs18.x
+      MemorySize: 128
+      Timeout: 600
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: 'bedrock:*'
+              Resource: '*'
+  GenerativeAIFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref GenerativeAIFunction
+      AuthType: AWS_IAM
+      InvokeMode: RESPONSE_STREAM
+Outputs:
+  StreamingBedrockFunction:
+    Description: "Streaming Bedrock Lambda Function ARN"
+    Value: !GetAtt GenerativeAIFunction.Arn
+  StreamingBedrockFunctionURL:
+    Description: "Streaming Bedrock Lambda Function URL"
+    Value: !GetAtt GenerativeAIFunctionUrl.FunctionUrl
