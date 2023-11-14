@@ -13,8 +13,8 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: 'bedrock:*'
-              Resource: '*'
+              Action: 'bedrock:InvokeModelWithResponseStream'
+              Resource: 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
   GenerativeAIFunctionUrl:
     Type: AWS::Lambda::Url
     Properties:

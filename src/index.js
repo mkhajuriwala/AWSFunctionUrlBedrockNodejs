@@ -8,26 +8,20 @@ const client = new BedrockRuntimeClient();
 const util = require('util');
 const stream = require('stream');
 const pipeline = util.promisify(stream.pipeline);
-const Readable = stream.Readable;
 const { Transform } = require("stream");
 
 
 exports.handler = awslambda.streamifyResponse(async (event, responseStream, context) => {
 
     const requestBody = JSON.parse(event.body);
-    console.log(requestBody);
     const metadata = {
             statusCode: 200,
             headers: {
-                "Content-Type": "text/plain",
-                "X-Custom-Header": "Example-Custom-Header"
+                "Content-Type": "text/plain"
             }
     };
 
-    //const prompt="Rewrite the sentence : "+requestBody.prompt;
-
     const prompt= requestBody.prompt;
-    console.log(prompt);
 
     const input = {
         body: `{"prompt": "Human: ${prompt}\\nAssistant:","max_tokens_to_sample": 300 ,"temperature": 1,"top_k": 250,"top_p": 0.999,"stop_sequences":["\\n\\nHuman:"],"anthropic_version": "bedrock-2023-05-31" }`,
@@ -40,24 +34,29 @@ exports.handler = awslambda.streamifyResponse(async (event, responseStream, cont
 
     const command = new InvokeModelWithResponseStreamCommand(input);
 
-      let data, completion;
-      data = await client.send(command);
-      const decodedData = new Transform({
+    const data = await client.send(command);
+    const decodedData = new Transform({
       objectMode: true,
-      transform(chunk, encoding, callback) {
-        console.log("This is chunk "+JSON.stringify(chunk));
-        callback(null, JSON.parse(new TextDecoder().decode(chunk.chunk.bytes)).completion);
+      transform(body, encoding, callback) {
+        try{
+            const parsedData = JSON.parse(new TextDecoder().decode(body.chunk.bytes));
+            //console.log(parsedData.completion);
+            this.push(parsedData.completion);
+            callback();
+        } catch (error) {
+            callback(error); // Handle parsing errors
+        }
       },
     });
 
     responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
 
-    var requestStream = require('stream').Readable;
-    var streamInput = new Readable();
-    streamInput.push(JSON.stringify(input));
-    streamInput.push(null);
-
-
-    await pipeline(data.body, decodedData,responseStream);
+    await pipeline(data.body, decodedData,responseStream)
+    .then(() => {
+        console.log('Pipeline completed');
+      })
+      .catch((error) => {
+        console.error('Pipeline error:', error);
+      });
 
 });
